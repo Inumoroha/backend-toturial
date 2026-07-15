@@ -120,3 +120,24 @@ WHERE status = 'pending'
 - 能解释 `concurrencyPolicy` 的作用。
 - 能说明定时任务的幂等和事务边界。
 
+## 八、读懂 Cron 和调度行为
+
+五段 Cron 表达式从左到右是：分钟、小时、日、月、星期。
+
+```text
+*/10 * * * *   每 10 分钟
+0 2 * * *      每天 02:00
+30 9 * * 1-5   周一到周五 09:30
+```
+
+生产中必须明确时区。集群支持 `spec.timeZone` 时可显式设置，例如 `Asia/Shanghai`；提交前用 `kubectl explain cronjob.spec.timeZone` 检查当前版本是否支持。
+
+不要等待十分钟验证任务，直接从 CronJob 创建一次性 Job：
+
+```bash
+kubectl create job --from=cronjob/short-link-expire-cleaner cleaner-check-001
+kubectl get job cleaner-check-001 -w
+kubectl logs job/cleaner-check-001
+```
+
+自测：为什么 `concurrencyPolicy: Forbid` 仍不能代替幂等设计？因为任务可能在写入成功后、报告完成前失败，随后被重试；外部系统也可能重复触发。

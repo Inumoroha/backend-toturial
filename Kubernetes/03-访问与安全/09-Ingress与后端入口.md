@@ -153,3 +153,27 @@ rules:
 - 能在本地通过 hosts 测试域名访问。
 - 知道 Ingress Controller 是必要组件。
 
+## 八、按层排查外部访问
+
+Ingress 失败时，先证明后端正常，再检查入口。推荐顺序：
+
+```bash
+kubectl get pods -l app=short-api
+kubectl get endpointslices -l kubernetes.io/service-name=short-api
+kubectl port-forward svc/short-api 8080:8080
+kubectl get ingress short-api
+kubectl describe ingress short-api
+kubectl get pods -A
+```
+
+如果 `port-forward` 能访问而域名不能，问题大概率在 Ingress Controller、IngressClass、入口地址或本机 DNS/hosts，不要继续修改应用代码。
+
+不修改 hosts 也可以先发送 Host 请求头测试规则：
+
+```bash
+curl -H "Host: short.local" http://<入口IP>/healthz
+```
+
+预期返回 `ok`。入口 IP 的获取方式因 Minikube、kind、Docker Desktop 和云集群而不同。
+
+自测：只创建 Ingress 资源却没有安装 Controller 会怎样？规则能保存在 API Server 中，但没有组件真正监听和转发流量。

@@ -127,3 +127,22 @@ rules:
 - 能区分 Role 和 ClusterRole 的适用场景。
 - 能说明为什么应用运行权限和部署权限要分开。
 
+## 八、用“允许/拒绝”验证权限
+
+RBAC 配置不能只靠阅读 YAML 判断，要用实际身份验证：
+
+```bash
+kubectl auth can-i get configmaps \
+  --as=system:serviceaccount:backend-dev:short-api \
+  -n backend-dev
+
+kubectl auth can-i delete secrets \
+  --as=system:serviceaccount:backend-dev:short-api \
+  -n backend-dev
+```
+
+理想结果是业务确实需要的操作返回 `yes`，不需要的危险操作返回 `no`。如果集群不允许身份模拟，管理员需提供验证方式；不要因此给 ServiceAccount 更大权限。
+
+ServiceAccount 表示 Pod 使用的身份；Role 描述某个 Namespace 内允许做什么；RoleBinding 把身份和 Role 连接起来。ClusterRole/ClusterRoleBinding 可能影响整个集群，初学业务服务时优先使用 Namespace 范围对象。
+
+练习：查看 Pod YAML，确认 `spec.serviceAccountName` 确实引用预期 ServiceAccount。创建了身份但 Pod 没使用，是常见遗漏。

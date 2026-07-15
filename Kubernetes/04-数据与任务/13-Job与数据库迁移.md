@@ -119,3 +119,20 @@ ON short_links (created_at);
 - 能说明迁移任务为什么不应放在 API 多副本启动流程中。
 - 能理解迁移顺序和回滚风险。
 
+## 八、把 Job 当成有结果的一次执行
+
+Deployment 期望进程长期运行，Job 期望任务成功结束。程序以退出码 0 结束才算成功，非 0 会按策略重试。
+
+```bash
+kubectl apply -f migrate-job.yaml
+kubectl get job -w
+kubectl get pods -l job-name=short-api-migrate-001
+kubectl logs job/short-api-migrate-001
+kubectl describe job short-api-migrate-001
+```
+
+成功时 `COMPLETIONS` 变为 `1/1`。失败时先保留 Job 和 Pod 查日志，不要马上删除现场。
+
+Job 名称需要区分迁移版本，因为已完成的同名 Job 再次 `apply` 不会重新执行任务。可以使用 `short-api-migrate-002`，或由流水线为每次迁移生成可追踪名称。
+
+练习：让迁移命令暂时返回非零退出码，观察重试次数和 `backoffLimit`；恢复命令后创建新名称的 Job。思考任务重复执行时是否安全，这就是幂等性要求。

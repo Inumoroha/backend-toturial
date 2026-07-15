@@ -123,3 +123,23 @@ containers:
 - 能理解“声明式配置”的直觉。
 - 知道初学阶段不要过早深入复杂底层原理。
 
+## 八、零基础加餐：用一次故障理解“控制器”
+
+先把 Deployment 想成一名持续巡检的管理员。你声明 `replicas: 2`，它就会不断比较“期望有 2 个 Pod”和“现在实际有几个 Pod”。少了一个，它会创建新的；多了一个，它会逐步收敛到期望数量。
+
+后面搭好集群后，可以回到这里做实验：
+
+```bash
+kubectl create deployment controller-demo --image=nginx:alpine --replicas=2
+kubectl get pods -l app=controller-demo
+kubectl delete pod <其中一个-pod-name>
+kubectl get pods -l app=controller-demo -w
+```
+
+预期现象：旧 Pod 进入终止状态，同时出现一个名字不同的新 Pod。按 `Ctrl+C` 结束观察，再清理：
+
+```bash
+kubectl delete deployment controller-demo
+```
+
+自测：为什么删除 Pod 后它会回来，而删除 Deployment 后不会回来？因为 Pod 是 Deployment 管理的实际对象，而 Deployment 才保存副本的期望状态。

@@ -115,3 +115,26 @@ kubectl get configmap short-api-config -n backend-prod
 - 能解释 Namespace 的隔离作用和限制。
 - 能避免常见的 namespace 误操作。
 
+## 八、建立 Namespace 安全习惯
+
+同名资源可以存在于不同 Namespace。下面两条命令看到的可能是完全不同的服务：
+
+```bash
+kubectl get deploy short-api -n backend-dev
+kubectl get deploy short-api -n backend-prod
+```
+
+练习环境中创建两个 Namespace，并分别放一个 ConfigMap：
+
+```bash
+kubectl create namespace backend-dev
+kubectl create namespace backend-test
+kubectl create configmap environment --from-literal=APP_ENV=dev -n backend-dev
+kubectl create configmap environment --from-literal=APP_ENV=test -n backend-test
+kubectl get configmap environment -n backend-dev -o jsonpath='{.data.APP_ENV}'
+kubectl get configmap environment -n backend-test -o jsonpath='{.data.APP_ENV}'
+```
+
+预期分别输出 `dev` 和 `test`。Namespace 是逻辑边界，不等于完整安全隔离。还需要 RBAC、ResourceQuota、NetworkPolicy 和不同的密钥。
+
+每次执行变更命令前形成口头检查：**哪个集群、哪个 Namespace、哪个资源、会发生什么变化**。

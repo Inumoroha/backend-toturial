@@ -143,3 +143,24 @@ from:
 - 能说明 NetworkPolicy 对网络插件的依赖。
 - 能在上线策略前先梳理服务调用关系。
 
+## 八、先验证“允许”，再验证“拒绝”
+
+实施 NetworkPolicy 前，先记录当前能成功访问的源 Pod、目标 Service、端口和 DNS。应用策略后从两个身份测试：应被允许的 `short-api` 和不应被允许的临时 Pod。
+
+```bash
+kubectl get networkpolicy -n backend-dev
+kubectl describe networkpolicy allow-short-api-to-postgres -n backend-dev
+kubectl get pods -n backend-dev --show-labels
+```
+
+测试时要设置短超时，避免连接被丢弃后一直等待：
+
+```bash
+kubectl run net-test --rm -it -n backend-dev --restart=Never \
+  --image=postgres:16-alpine -- \
+  pg_isready -h postgres -p 5432 -t 3
+```
+
+临时 Pod 没有允许标签时应失败；从 `short-api` 身份发起的连接应成功。具体测试工具可按镜像调整。
+
+若策略创建成功但两种连接都仍成功，检查 CNI 是否支持 NetworkPolicy。若允许流量也失败，检查 Pod label、Namespace 选择器、端口以及是否额外启用了 Egress 默认拒绝。做 Egress 限制时必须考虑 DNS，否则 Service 名称可能无法解析。

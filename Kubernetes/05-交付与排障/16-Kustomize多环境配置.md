@@ -138,3 +138,17 @@ Kustomize 的核心习惯是：base 表达共同结构，overlay 表达环境差
 - 能查看最终渲染 YAML。
 - 能区分 Helm 和 Kustomize 的适用场景。
 
+## 八、比较两个环境的最终结果
+
+Kustomize 的学习重点是始终检查“叠加之后是什么”：
+
+```bash
+kubectl kustomize k8s/overlays/dev > dev-rendered.yaml
+kubectl kustomize k8s/overlays/prod > prod-rendered.yaml
+kubectl diff -k k8s/overlays/dev
+kubectl apply --dry-run=client -k k8s/overlays/dev
+```
+
+用编辑器比较两个渲染文件，应该只看到计划内差异，例如 Namespace、副本数、镜像标签、日志级别和域名。
+
+练习：在 base 中增加统一 label，确认 dev 和 prod 渲染结果都出现它；再只在 dev overlay 修改副本数，确认 prod 不受影响。这样能直观看到“共同结构”和“环境差异”的边界。

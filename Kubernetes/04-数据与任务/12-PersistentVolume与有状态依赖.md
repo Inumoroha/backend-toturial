@@ -141,3 +141,19 @@ postgres://app:password@postgres:5432/short?sslmode=disable
 - 能说明生产数据库放进 Kubernetes 的主要风险。
 - 能区分学习环境和生产环境的保守选择。
 
+## 八、观察卷的生命周期
+
+先分清三个对象：StorageClass 描述“如何提供存储”；PVC 是应用提出的存储申请；PV 是满足申请的实际卷。Pod 通常引用 PVC，而不是直接挑选某个 PV。
+
+```bash
+kubectl get storageclass
+kubectl get pvc
+kubectl get pv
+kubectl describe pvc <pvc-name>
+```
+
+PVC 应从 `Pending` 变为 `Bound`。一直 `Pending` 时查看 Events，常见原因是没有默认 StorageClass、访问模式不支持或请求容量无法满足。
+
+实验：创建使用 PVC 的 Pod，在挂载目录写一个文本文件；删除并重建 Pod 后再次读取。文件仍在才说明数据生命周期独立于 Pod。随后查看 PV 的 `persistentVolumeReclaimPolicy`，理解删除 PVC 后数据是保留还是删除。
+
+这项实验只证明“卷能持久化”，不证明数据库已经高可用。数据库还需要一致性、备份恢复、复制、故障切换、容量和升级策略。

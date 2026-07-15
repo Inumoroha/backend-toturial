@@ -397,3 +397,69 @@ DROP TABLE IF EXISTS short_links;
 - 能用 CronJob 执行业务定时任务。
 - 能描述一次可回滚的发布流程。
 - 能写出参数化查询示例，并说明事务边界为什么要小。
+
+## 八、零基础实战执行顺序
+
+这一章不要一次性应用整个目录。按依赖关系分批执行，每一步通过后再继续。
+
+### 第 1 步：确认应用在容器外可运行
+
+先用 `go run .` 启动服务，验证 `/healthz`。再构建 Docker 镜像并用 `docker run` 验证同一个接口。容器阶段失败时先不要进入 Kubernetes。
+
+### 第 2 步：准备集群和镜像
+
+```bash
+kubectl config current-context
+kubectl get nodes
+docker build -t short-api:0.1.0 .
+kind load docker-image short-api:0.1.0 --name backend-lab
+```
+
+最后一条只适用于教程使用的 kind 集群；Minikube 或 Docker Desktop 按第 4 章对应方式处理。
+
+### 第 3 步：按顺序创建资源
+
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.example.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+每一步执行后都用 `kubectl get` 确认对象进入预期 Namespace。Secret 示例密码只允许用于本地练习。
+
+### 第 4 步：验证应用主链路
+
+```bash
+kubectl get deploy,pods,svc -n backend-dev
+kubectl rollout status deployment/short-api -n backend-dev
+kubectl get endpointslices -n backend-dev \
+  -l kubernetes.io/service-name=short-api
+kubectl port-forward -n backend-dev svc/short-api 8080:8080
+```
+
+另开终端访问 `/healthz`。如果 Pod 没有 Ready，先 `describe` 和 `logs`，不要继续创建 Ingress。
+
+### 第 5 步：执行数据任务
+
+数据库已可用并且连接串正确后，再创建迁移 Job。等 `COMPLETIONS 1/1`，核对日志和表结构，最后创建 CronJob，并手动生成一次测试 Job。任务失败时停止后续发布。
+
+### 第 6 步：验证入口与回滚
+
+安装 Ingress Controller 后再创建 Ingress。分别验证 Service 直连和域名入口，确保能区分应用故障与入口故障。最后发布一个测试版本，完成一次 `rollout status` 和 `rollout undo`。
+
+## 九、项目验收表
+
+| 检查项 | 验证方式 | 通过标准 |
+| --- | --- | --- |
+| 镜像 | 本地运行容器 | `/healthz` 返回 200 |
+| Deployment | `get`、`rollout status` | 期望副本全部 Ready |
+| 配置 | 启动日志或非敏感配置接口 | 环境和日志级别正确 |
+| Service | EndpointSlice、port-forward | 能访问 Ready Pod |
+| 迁移 | Job 状态和数据库结构 | Job 成功且结构符合版本 |
+| CronJob | 手动创建 Job | 可重复执行且结果可接受 |
+| Ingress | 域名请求 | 路由到正确 Service |
+| 回滚 | rollout history/undo | 旧版本恢复且核心接口正常 |
+
+完成验收后保存一次资源清单和排障记录。清理本地资源时优先按创建顺序反向删除，并先确认 Context 和 Namespace。

@@ -123,3 +123,26 @@ env:
 - 能用 `port-forward` 调试 Service。
 - 能排查 Service selector 选不到 Pod 的问题。
 
+## 八、逐跳验证网络
+
+Service 访问失败时，把链路拆成三段：应用自身、Service 后端、Service 入口。
+
+```bash
+kubectl get pods -l app=short-api --show-labels
+kubectl get svc short-api -o yaml
+kubectl get endpointslices -l kubernetes.io/service-name=short-api
+kubectl port-forward svc/short-api 8080:8080
+```
+
+EndpointSlice 中应该出现一个或多个 Pod IP；为空时优先比较 Service 的 `selector` 与 Pod 的 `labels`。两边必须键和值都相同。
+
+可以从集群内部验证 DNS：
+
+```bash
+kubectl run curl-test --rm -it --restart=Never --image=curlimages/curl -- \
+  curl -sS http://short-api:8080/healthz
+```
+
+预期输出是 `ok`。如果镜像暂时拉取不到，不代表 Service 配置错误，可以先使用 `port-forward` 完成验证。
+
+自测：Service 的 ClusterIP 为什么不用随着 Pod 重建而改变？因为客户端访问的是 Service 的虚拟地址，Kubernetes 会维护它到当前 Ready Pod 的后端映射。

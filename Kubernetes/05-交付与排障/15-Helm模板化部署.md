@@ -134,3 +134,23 @@ helm upgrade --install short-api ./short-api -n backend-prod -f values-prod.yaml
 - 能用 `helm template` 检查渲染结果。
 - 能用 `helm upgrade --install` 部署服务。
 
+## 八、从渲染结果学习 Helm
+
+Helm 最容易被模板语法吓住。先记住：集群最终接收的仍是普通 Kubernetes YAML。每次先渲染并检查关键字段：
+
+```bash
+helm lint ./short-api
+helm template short-api ./short-api -f values.yaml
+helm template short-api ./short-api -f values-prod.yaml --debug
+```
+
+重点确认资源名称、Namespace、镜像、标签、selector、端口、Ingress 域名和 Secret 引用。渲染正确后再安装：
+
+```bash
+helm upgrade --install short-api ./short-api \
+  -n backend-dev --create-namespace --wait --timeout 5m
+helm list -n backend-dev
+helm status short-api -n backend-dev
+```
+
+`--wait` 会等待部分资源达到就绪状态，但不能代替业务冒烟测试。自测：values 提供数据，templates 描述数据如何组成最终 YAML；修改 values 后仍必须重新升级才会影响集群。

@@ -167,3 +167,24 @@ kubectl delete deploy hello-api
 - 能通过 `port-forward` 访问集群内服务。
 - 能清理自己创建的练习资源。
 
+## 八、零基础操作清单
+
+第一次搭环境时，按顺序确认，不要在前一步失败时继续：
+
+1. `docker version` 能同时显示 Client 和 Server 信息。
+2. 本地集群已启动，不只是安装了软件。
+3. `kubectl config current-context` 指向你的本地集群。
+4. `kubectl get nodes` 至少有一个节点，状态为 `Ready`。
+5. 示例 Deployment 的 Pod 变成 `Running`，`READY` 为 `1/1`。
+6. `port-forward` 保持运行时，另一个终端能访问服务。
+
+认识命令输出：
+
+```text
+NAME                 READY   STATUS    RESTARTS   AGE
+hello-api-xxxxxxxx   1/1     Running   0          30s
+```
+
+`READY 1/1` 表示一个容器已经就绪；`RESTARTS 0` 表示尚未重启；`AGE` 是资源存在时间。Pod 名后面的随机字符由 Deployment 自动生成，不需要记忆。
+
+练习：执行 `kubectl get pods -o wide`，找出 Pod 所在节点和 Pod IP。然后执行 `kubectl config get-contexts`，找到当前 Context 前面的 `*`。这两个命令都只读，适合用来熟悉环境。

@@ -118,3 +118,25 @@ kubectl rollout status deployment/short-api
 - 能更新镜像并观察滚动更新。
 - 能执行一次回滚。
 
+## 八、逐步观察 Deployment
+
+应用 YAML 后，不要只看最后结果。用下面命令观察三层资源：
+
+```bash
+kubectl get deployment short-api
+kubectl get replicasets -l app=short-api
+kubectl get pods -l app=short-api -o wide
+kubectl describe deployment short-api
+```
+
+关系是 `Deployment -> ReplicaSet -> Pod`。更新镜像时，Deployment 会创建新 ReplicaSet，再逐步减少旧 ReplicaSet 的 Pod。通常你操作 Deployment，不直接操作 ReplicaSet。
+
+如果 Pod 出现 `ImagePullBackOff`，先运行：
+
+```bash
+kubectl describe pod <pod-name>
+```
+
+查看末尾 Events。如果使用本地镜像，确认镜像已载入本地集群，并且镜像名、标签和 YAML 完全一致。
+
+练习：把副本数从 2 改为 3 后 `apply`，观察只增加一个 Pod；再把镜像名故意改成不存在的 `short-api:does-not-exist`，观察新 Pod 的事件，最后改回正确标签恢复服务。

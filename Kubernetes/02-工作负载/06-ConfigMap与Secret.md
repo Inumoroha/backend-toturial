@@ -143,3 +143,27 @@ func Load() Config {
 - 能在 Go 服务中读取环境变量。
 - 能说明 Secret 的使用边界和风险。
 
+## 八、验证配置是否真的注入
+
+应用三个 YAML 后，先确认引用对象存在，再查看 Deployment 是否完成更新：
+
+```bash
+kubectl get configmap short-api-config
+kubectl get secret short-api-secret
+kubectl rollout status deployment/short-api
+kubectl exec deployment/short-api -- printenv APP_ENV
+```
+
+预期输出为 `dev`。不要用 `printenv` 查看真实生产密码，也不要把完整 Secret 内容贴进聊天、工单或日志。
+
+修改 `LOG_LEVEL` 后，运行：
+
+```bash
+kubectl apply -f configmap.yaml
+kubectl rollout restart deployment/short-api
+kubectl rollout status deployment/short-api
+```
+
+这里需要重启，是因为进程启动时读取环境变量；Kubernetes 不会修改已运行进程的环境。若以文件卷挂载 ConfigMap，文件更新行为不同，但应用仍要支持重载，初学阶段先掌握环境变量方式。
+
+练习：从 Secret YAML 中暂时删除 `DATABASE_URL`，观察应用是否按代码设计快速失败，再恢复配置。这个实验能验证“启动时校验必要配置”是否真的生效。
